@@ -9,24 +9,21 @@ spec:
   project: platform-tools
   
   source:
+    # Use Bitnami's redis-cluster chart directly
     repoURL: https://charts.bitnami.com/bitnami
     chart: redis-cluster
-    targetRevision: 10.2.7
+    targetRevision: 11.0.5  # Latest stable version
     helm:
       releaseName: redis-cluster
       values: |
         ## Redis Cluster Configuration
-        architecture: cluster
-        
-        ## Cluster settings - 3 masters + 3 replicas
         cluster:
           nodes: 6
           replicas: 1
         
         ## Authentication
         usePassword: true
-        existingSecret: redis-cluster-secret
-        existingSecretPasswordKey: redis-password
+        password: ""  # Auto-generate
         
         ## Persistence
         persistence:
@@ -35,16 +32,7 @@ spec:
           storageClass: ""
         
         ## Resources
-        master:
-          resources:
-            limits:
-              cpu: 500m
-              memory: 512Mi
-            requests:
-              cpu: 250m
-              memory: 256Mi
-        
-        replica:
+        redis:
           resources:
             limits:
               cpu: 500m
@@ -94,11 +82,6 @@ spec:
               cpu: 50m
               memory: 64Mi
         
-        ## Pod Disruption Budget
-        pdb:
-          create: true
-          minAvailable: 2
-        
         ## Update strategy
         updateStrategy:
           type: RollingUpdate
@@ -113,7 +96,7 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
-      - CreateNamespace=false
+      - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
     retry:
