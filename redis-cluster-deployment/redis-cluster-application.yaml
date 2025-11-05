@@ -1,0 +1,124 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: redis-cluster
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform-tools
+  
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: redis-cluster
+    targetRevision: 10.2.7
+    helm:
+      releaseName: redis-cluster
+      values: |
+        ## Redis Cluster Configuration
+        architecture: cluster
+        
+        ## Cluster settings - 3 masters + 3 replicas
+        cluster:
+          nodes: 6
+          replicas: 1
+        
+        ## Authentication
+        usePassword: true
+        existingSecret: redis-cluster-secret
+        existingSecretPasswordKey: redis-password
+        
+        ## Persistence
+        persistence:
+          enabled: true
+          size: 8Gi
+          storageClass: ""
+        
+        ## Resources
+        master:
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+        
+        replica:
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+        
+        ## Redis config
+        redis:
+          configmap: |-
+            maxmemory 256mb
+            maxmemory-policy allkeys-lru
+            appendonly yes
+            appendfsync everysec
+        
+        ## Security
+        podSecurityContext:
+          enabled: true
+          fsGroup: 1001
+          runAsUser: 1001
+          runAsNonRoot: true
+        
+        containerSecurityContext:
+          enabled: true
+          runAsUser: 1001
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        
+        ## Service
+        service:
+          type: ClusterIP
+          ports:
+            redis: 6379
+        
+        ## Metrics
+        metrics:
+          enabled: true
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+        
+        ## Pod Disruption Budget
+        pdb:
+          create: true
+          minAvailable: 2
+        
+        ## Update strategy
+        updateStrategy:
+          type: RollingUpdate
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: redis-cluster
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=false
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
