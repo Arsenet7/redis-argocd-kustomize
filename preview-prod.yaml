@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: redis-cluster
+    app.kubernetes.io/part-of: platform-tools
+    criticality: high
+    environment: production
+    name: redis-cluster
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    team: strikers
+  name: redis-cluster
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: redis-cluster
+    app.kubernetes.io/part-of: platform-tools
+    criticality: high
+    environment: production
+    team: strikers
+  name: redis-cluster-quota
+  namespace: redis-cluster
+spec:
+  hard:
+    configmaps: "20"
+    limits.cpu: "6"
+    limits.memory: 12Gi
+    persistentvolumeclaims: "10"
+    pods: "20"
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    requests.storage: 100Gi
+    secrets: "20"
+    services: "10"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/name: redis-cluster
+    app.kubernetes.io/part-of: platform-tools
+    criticality: high
+    environment: production
+    team: strikers
+  name: redis-cluster-network-policy
+  namespace: redis-cluster
+spec:
+  egress:
+  - ports:
+    - port: 53
+      protocol: UDP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  - ports:
+    - port: 6379
+      protocol: TCP
+    - port: 16379
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          name: redis-cluster
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: redis-cluster
+    ports:
+    - port: 6379
+      protocol: TCP
+    - port: 16379
+      protocol: TCP
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: platform-tools
+    ports:
+    - port: 6379
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: database
+      app.kubernetes.io/managed-by: argocd
+      app.kubernetes.io/name: redis-cluster
+      app.kubernetes.io/part-of: platform-tools
+      criticality: high
+      environment: production
+      team: strikers
+  policyTypes:
+  - Ingress
+  - Egress

@@ -1,0 +1,69 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference to base
+resources:
+  - ../../base
+
+# Override namespace for dev
+namespace: redis-cluster-dev
+
+# Add environment-specific labels
+commonLabels:
+  environment: dev
+  team: strikers
+
+# Environment-specific annotations
+commonAnnotations:
+  contact: "arsene@company.com"
+  tier: "development"
+
+# Patch namespace name for dev
+patches:
+  - target:
+      kind: Namespace
+      name: redis-cluster
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: redis-cluster-dev
+      - op: add
+        path: /metadata/labels/environment
+        value: dev
+
+  # Reduce resource quota for dev
+  - target:
+      kind: ResourceQuota
+      name: redis-cluster-quota
+    patch: |-
+      - op: replace
+        path: /spec/hard/requests.cpu
+        value: "2"
+      - op: replace
+        path: /spec/hard/requests.memory
+        value: "4Gi"
+      - op: replace
+        path: /spec/hard/limits.cpu
+        value: "3"
+      - op: replace
+        path: /spec/hard/limits.memory
+        value: "6Gi"
+      - op: replace
+        path: /spec/hard/requests.storage
+        value: "50Gi"
+
+  # Make network policy less restrictive in dev
+  - target:
+      kind: NetworkPolicy
+      name: redis-cluster-network-policy
+    patch: |-
+      - op: add
+        path: /spec/ingress/-
+        value:
+          from:
+            - namespaceSelector:
+                matchLabels:
+                  environment: dev
+          ports:
+            - protocol: TCP
+              port: 6379

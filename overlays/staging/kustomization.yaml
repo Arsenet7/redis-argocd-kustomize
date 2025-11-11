@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: redis-cluster-staging
+
+commonLabels:
+  environment: staging
+  team: strikers
+
+commonAnnotations:
+  contact: "arsene@company.com"
+  tier: "staging"
+
+patches:
+  - target:
+      kind: Namespace
+      name: redis-cluster
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: redis-cluster-staging
+      - op: add
+        path: /metadata/labels/environment
+        value: staging
+
+  # Moderate resources for staging
+  - target:
+      kind: ResourceQuota
+      name: redis-cluster-quota
+    patch: |-
+      - op: replace
+        path: /spec/hard/requests.cpu
+        value: "3"
+      - op: replace
+        path: /spec/hard/requests.memory
+        value: "6Gi"
+      - op: replace
+        path: /spec/hard/limits.cpu
+        value: "4"
+      - op: replace
+        path: /spec/hard/limits.memory
+        value: "8Gi"
+      - op: replace
+        path: /spec/hard/requests.storage
+        value: "75Gi"

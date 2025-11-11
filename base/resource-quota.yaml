@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: redis-cluster-quota
+  namespace: redis-cluster
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "6"
+    limits.memory: "12Gi"
+    
+    # Storage
+    persistentvolumeclaims: "10"
+    requests.storage: "100Gi"
+    
+    # Object counts
+    pods: "20"
+    services: "10"
+    configmaps: "20"
+    secrets: "20"

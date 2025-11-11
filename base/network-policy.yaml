@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-cluster-network-policy
+  namespace: redis-cluster
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis-cluster
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  ingress:
+    # Allow traffic from pods in the same namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: redis-cluster
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 16379  # Redis cluster bus
+    
+    # Allow from application namespaces (customize as needed)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: platform-tools
+      ports:
+        - protocol: TCP
+          port: 6379
+  
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    
+    # Allow internal cluster communication
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: redis-cluster
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 16379
+    
+    # Allow outbound HTTPS for metrics/monitoring (optional)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443

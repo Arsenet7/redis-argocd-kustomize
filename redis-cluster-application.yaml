@@ -1,0 +1,122 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: redis-cluster
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform-tools
+
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: redis-cluster
+    targetRevision: 11.0.5
+    helm:
+      releaseName: redis-cluster
+      values: |
+        # Redis Cluster Configuration
+        cluster:
+          nodes: 6
+          replicas: 1
+          init: true
+
+        # Authentication (auto-generate password, no secret in git)
+        usePassword: true
+        password: ""
+
+        # Persistence
+        persistence:
+          enabled: true
+          size: 8Gi
+          storageClass: "local-path"
+
+        # Image configuration
+        image:
+          registry: docker.io
+          repository: bitnamilegacy/redis-cluster
+          tag: "8.2.1-debian-12-r0"
+          pullPolicy: IfNotPresent
+
+        # Resources - FIXED: nested under 'redis' key for this chart
+        redis:
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          # Redis config - FIXED: use 'configmap' not 'commonConfiguration'
+          configmap: |-
+            maxmemory 256mb
+            maxmemory-policy allkeys-lru
+            appendonly yes
+            appendfsync everysec
+
+        # CRITICAL: Disable probes while cluster stabilizes
+        # These settings are at root level for this chart version
+        livenessProbe:
+          enabled: false
+
+        readinessProbe:
+          enabled: false
+
+        # Security contexts
+        podSecurityContext:
+          enabled: true
+          fsGroup: 1001
+          runAsUser: 1001
+          runAsNonRoot: true
+
+        containerSecurityContext:
+          enabled: true
+          runAsUser: 1001
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        # Service
+        service:
+          type: ClusterIP
+          ports:
+            redis: 6379
+
+        # Metrics
+        metrics:
+          enabled: true
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+
+        # Update strategy
+        updateStrategy:
+          type: RollingUpdate
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: redis-cluster
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

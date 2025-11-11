@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Common metadata applied to all resources
+namespace: redis-cluster
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: redis-cluster
+  app.kubernetes.io/component: database
+  app.kubernetes.io/part-of: platform-tools
+  app.kubernetes.io/managed-by: argocd
+
+# Resources that are common across all environments
+resources:
+  - namespace.yaml
+  - network-policy.yaml
+  - resource-quota.yaml
